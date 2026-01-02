@@ -98,25 +98,50 @@ python db_setup.py
 
 Esto creará todas las tablas necesarias: `grupos`, `alumnos`, `tareas`, `calificaciones`, `asistencias`.
 
-### 6. Cargar alumnos
+### 6. Cargar profesores
 
-Crea un archivo CSV por grupo con el formato:
+Crea un archivo CSV con el formato:
 
-**Ejemplo**: `MCI-2025B Instrumentación Electrónica.csv`
+**Ejemplo**: `ejemplo_profesores.csv`
 
 ```csv
-numero_cuenta,nombre,nombref2,email
-12345,Carlos Alejandro Guadarrama Romero,"Guadarrama Romero, Carlos Alejandro",carlos@correo.com
-67890,Citlali Irais Cano Del Razo,"Cano Del Razo, Citlali Irais",citlali@correo.com
+numero_empleado,nombre,nombref2,email,especialidad,rol,grupos
+P001,Javier Salas García,"Salas García, Javier",javier@universidad.edu,Instrumentación Electrónica,admin,MCI-2025B Instrumentación Electrónica|Grupo Avanzado
+P002,María Elena López,"López, María Elena",maria@universidad.edu,Sistemas Embebidos,profesor,Grupo Avanzado
 ```
+
+**Notas importantes**:
+- `rol`: puede ser `profesor` o `admin`
+- `grupos`: separados por `|` (pipe) para múltiples grupos
+- Password por defecto = número de empleado (deben cambiarla en el primer login)
+
+Ejecuta:
+
+```bash
+python cargar_profesores.py
+```
+
+### 7. Cargar alumnos
+
+Crea un archivo CSV con el formato:
+
+**Ejemplo**: `ejemplo_alumnos.csv`
+
+```csv
+numero_cuenta,nombre,nombref2,email,grupos
+12345,Carlos Alejandro Guadarrama Romero,"Guadarrama Romero, Carlos Alejandro",carlos@correo.com,MCI-2025B Instrumentación Electrónica
+67890,Citlali Irais Cano Del Razo,"Cano Del Razo, Citlali Irais",citlali@correo.com,MCI-2025B Instrumentación Electrónica|Grupo Avanzado
+```
+
+**Notas importantes**:
+- `grupos`: separados por `|` (pipe) - un alumno puede estar en múltiples grupos
+- Password por defecto = número de cuenta (deben cambiarla en el primer login)
 
 Ejecuta:
 
 ```bash
 python cargar_alumnos.py
 ```
-
-Selecciona el archivo CSV del grupo que deseas cargar.
 
 ---
 
@@ -261,20 +286,38 @@ python tareas.py
 
 ## 📊 Estructura de la Base de Datos
 
+### Arquitectura Multi-Usuario
+
+El sistema soporta:
+- **Múltiples profesores** (con rol de profesor o administrador)
+- **Múltiples grupos** (cada grupo asignado a un profesor)
+- **Alumnos en múltiples grupos** (relación muchos-a-muchos)
+
+### Tabla: `profesores`
+- `id`, `numero_empleado` (UNIQUE), `nombre`, `nombref2`, `password`, `rol` (ENUM: 'profesor', 'admin')
+- `primer_login` (BOOLEAN), `email`, `especialidad`, `created_at`
+
 ### Tabla: `grupos`
-- `id`, `nombre`, `semestre`, `anio`, `created_at`
+- `id`, `nombre`, `semestre`, `anio`, `profesor_id` (FK → profesores), `created_at`
 
 ### Tabla: `alumnos`
-- `id`, `numero_cuenta`, `nombre`, `nombref2`, `grupo_id`, `team_id`, `email`, `created_at`
+- `id`, `numero_cuenta` (UNIQUE), `nombre`, `nombref2`, `password`, `primer_login` (BOOLEAN)
+- `email`, `created_at`
+
+### Tabla: `alumnos_grupos` (relación muchos-a-muchos)
+- `id`, `alumno_id` (FK → alumnos), `grupo_id` (FK → grupos), `team_id`
+- UNIQUE constraint: (alumno_id, grupo_id)
 
 ### Tabla: `tareas`
-- `id`, `grupo_id`, `nombre`, `descripcion`, `fecha_limite`, `puntos_maximos`, `rubrica`, `created_at`
+- `id`, `grupo_id` (FK → grupos), `nombre`, `descripcion`, `fecha_limite`, `puntos_maximos`, `rubrica`, `created_at`
 
 ### Tabla: `calificaciones`
-- `id`, `alumno_id`, `tarea_id`, `calificacion` (0.0-10.0), `ruta_pdf_calificado`, `ruta_audio`, `ruta_transcripcion`, `fecha_calificacion`
+- `id`, `alumno_id` (FK → alumnos), `tarea_id` (FK → tareas), `calificacion` (0.0-10.0)
+- `ruta_pdf_calificado`, `ruta_audio`, `ruta_transcripcion`, `fecha_calificacion`
 
 ### Tabla: `asistencias`
-- `id`, `alumno_id`, `grupo_id`, `fecha`, `presente`, `created_at`
+- `id`, `alumno_id` (FK → alumnos), `grupo_id` (FK → grupos), `fecha`, `presente` (BOOLEAN), `created_at`
+- UNIQUE constraint: (alumno_id, grupo_id, fecha)
 
 ---
 
@@ -288,7 +331,10 @@ CalificarRubricas/
 ├── transcribir_audios.py         # Fase 2: Transcripción Whisper
 ├── calificar_gemini.py           # Fase 3: Calificación IA
 ├── db_setup.py                   # Setup de base de datos
+├── cargar_profesores.py          # Importar profesores desde CSV
 ├── cargar_alumnos.py             # Importar alumnos desde CSV
+├── ejemplo_profesores.csv        # Ejemplo CSV profesores
+├── ejemplo_alumnos.csv           # Ejemplo CSV alumnos
 ├── requirements.txt              # Dependencias Python
 ├── README.md                     # Este archivo
 │
@@ -296,7 +342,12 @@ CalificarRubricas/
 │   ├── raspberry_conexion.txt
 │   └── otra_tarea.txt
 │
-└── <Grupo>.csv                   # CSVs de alumnos por grupo
+├── sitioweb/                     # Plataforma web Flask
+│   ├── app.py
+│   ├── templates/
+│   └── static/
+│
+└── *.csv                         # Archivos CSV personalizados
 
 D:\tareas\Calificar\              # Carpeta de trabajo
 ├── <Grupo>/
@@ -377,6 +428,7 @@ pip install openai-whisper
 ```
 1. Configurar sistema
    └─> db_setup.py
+   └─> cargar_profesores.py (con CSV)
    └─> cargar_alumnos.py (con CSV)
    └─> Crear archivos de rúbricas
 
@@ -394,19 +446,25 @@ pip install openai-whisper
 
 5. Calificar con IA
    └─> calificar_gemini.py
-       ├─ Analiza PDF + rúbrica + transcripción
+       ├─ Analiza PDF + rúbrica + transcripción (prioriza observaciones de audio)
        ├─ Genera Cal_*.pdf con calificación
        └─ Sube a base de datos
 
 6. Devolver a estudiantes
    └─> tareas.py → "Regresar TODAS las calificadas"
+
+7. Visualizar en web (opcional)
+   └─> cd sitioweb && python app.py
+       ├─ Alumnos: Ver sus calificaciones
+       ├─ Profesores: Ver grupos y calificaciones
+       └─ Admins: Estadísticas y administración
 ```
 
 ---
 
 ## 🌐 Sitio Web - Visualización de Calificaciones
 
-El sistema incluye una **plataforma web** con diseño **Starlink Hi-Tech Minimalista Oscuro** para que alumnos y administradores visualicen calificaciones.
+El sistema incluye una **plataforma web** con diseño **Starlink Hi-Tech Minimalista Oscuro** para que alumnos, profesores y administradores visualicen calificaciones.
 
 ### Características del Sitio Web
 
@@ -414,8 +472,9 @@ El sistema incluye una **plataforma web** con diseño **Starlink Hi-Tech Minimal
 - **Fondo animado** con efecto de estrellas en movimiento
 - **Interfaz hi-tech** con acentos en cyan (#00d4ff)
 - **100% responsive** adaptable a cualquier dispositivo
-- **Autenticación segura** con roles (alumno/admin)
+- **Autenticación unificada** con tres tipos de usuarios
 - **Dashboards personalizados** según el tipo de usuario
+- **Arquitectura multi-usuario** soportando múltiples profesores y grupos
 
 ### Ejecutar el Sitio Web
 
@@ -433,22 +492,36 @@ Accede en: **http://localhost:5000**
 - Usuario: Número de cuenta
 - Contraseña inicial: Número de cuenta (deben cambiarla en el primer login)
 
+**Profesores:**
+- Usuario: Número de empleado
+- Contraseña inicial: Número de empleado (deben cambiarla en el primer login)
+
 **Administradores:**
-- Deben tener `rol='admin'` en la base de datos
+- Usuario: Número de empleado
+- Deben tener `rol='admin'` en la tabla `profesores`
 
 ### Funcionalidades
 
 #### Para Alumnos:
-- ✅ Ver todas sus calificaciones
+- ✅ Ver todas sus calificaciones de todos los grupos en los que están inscritos
 - ✅ Ver promedio general
 - ✅ Descargar PDFs calificados
 - ✅ Escuchar retroalimentación en audio
 - ✅ Cambiar contraseña
+- ✅ Visualizar calificaciones organizadas por grupo
+
+#### Para Profesores:
+- ✅ Ver todos los grupos que imparten
+- ✅ Ver estadísticas por grupo (número de estudiantes, tareas)
+- ✅ Ver calificaciones recientes de sus grupos
+- ✅ Cambiar contraseña
+- ✅ Dashboard especializado con información de sus grupos
 
 #### Para Administradores:
-- ✅ Ver estadísticas generales del sistema
+- ✅ Ver estadísticas generales del sistema completo
+- ✅ Contadores de alumnos, profesores, admins, grupos, tareas, calificaciones
 - ✅ Ver todas las calificaciones de todos los alumnos
-- ✅ Acceso rápido a scripts de administración
+- ✅ Acceso rápido a scripts de administración (cargar alumnos/profesores, transcribir, calificar)
 - ✅ API endpoints para consultas avanzadas
 - ✅ Panel de control completo
 
@@ -464,6 +537,7 @@ sitioweb/
 │   ├── base.html
 │   ├── login.html
 │   ├── dashboard_alumno.html
+│   ├── dashboard_profesor.html
 │   ├── dashboard_admin.html
 │   └── cambiar_password.html
 │
@@ -472,10 +546,18 @@ sitioweb/
     └── js/main.js             # JavaScript interactivo
 ```
 
+### Tipos de Usuarios
+
+**Sistema Multi-Usuario:**
+- **Alumnos**: Pueden estar inscritos en múltiples grupos simultáneamente
+- **Profesores**: Pueden impartir múltiples grupos (cada grupo asignado a un solo profesor)
+- **Administradores**: Profesores con privilegios administrativos (rol='admin')
+
 ### Capturas de Pantalla Conceptuales
 
-**Login**: Página de acceso con efecto de estrellas animadas y diseño minimalista
-**Dashboard Alumno**: Tarjetas con estadísticas, tabla de calificaciones, gráfico de progreso
+**Login**: Página de acceso unificada con efecto de estrellas animadas y diseño minimalista
+**Dashboard Alumno**: Tarjetas con estadísticas, tabla de calificaciones de todos sus grupos, gráfico de progreso
+**Dashboard Profesor**: Vista de grupos asignados, estadísticas por grupo, calificaciones recientes
 **Dashboard Admin**: Panel de control con estadísticas generales y acciones rápidas
 
 📖 **Documentación completa**: Ver `sitioweb/README.md`

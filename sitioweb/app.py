@@ -3,6 +3,7 @@ Sistema de Calificaciones - Plataforma Web
 Estilo: Starlink Hi-Tech Minimalista Oscuro
 
 Servidor Flask para gestión de calificaciones académicas
+Soporta 3 tipos de usuarios: Alumnos, Profesores y Administradores
 """
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
@@ -70,6 +71,20 @@ def admin_required(f):
     return decorated_function
 
 
+def profesor_required(f):
+    """Decorador para rutas que requieren ser profesor o admin"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Debes iniciar sesión', 'warning')
+            return redirect(url_for('login'))
+        if session.get('tipo_usuario') not in ['profesor', 'admin']:
+            flash('Solo profesores pueden acceder a esta sección', 'danger')
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 @app.route('/')
 def index():
     """Página principal - redirige a login o dashboard"""
@@ -80,13 +95,13 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """Página de inicio de sesión"""
+    """Página de inicio de sesión unificada para alumnos y profesores"""
     if request.method == 'POST':
-        numero_cuenta = request.form.get('numero_cuenta', '').strip()
+        identificador = request.form.get('identificador', '').strip()
         password = request.form.get('password', '').strip()
 
-        if not numero_cuenta or not password:
-            flash('Por favor ingresa número de cuenta y contraseña', 'danger')
+        if not identificador or not password:
+            flash('Por favor ingresa tu identificador y contraseña', 'danger')
             return render_template('login.html')
 
         conn = conectar_db()
@@ -96,24 +111,47 @@ def login():
 
         try:
             cursor = conn.cursor(dictionary=True)
+            usuario = None
+            tipo_usuario = None
+
+            # Buscar primero en alumnos
             cursor.execute("""
-                SELECT id, numero_cuenta, nombre, nombref2, password, rol, primer_login, email
+                SELECT id, numero_cuenta as identificador, nombre, nombref2, password, primer_login, email
                 FROM alumnos
                 WHERE numero_cuenta = %s
-            """, (numero_cuenta,))
+            """, (identificador,))
 
             usuario = cursor.fetchone()
+            if usuario:
+                tipo_usuario = 'alumno'
+                usuario['rol'] = 'alumno'
+            else:
+                # Buscar en profesores
+                cursor.execute("""
+                    SELECT id, numero_empleado as identificador, nombre, nombref2, password, rol, primer_login, email, especialidad
+                    FROM profesores
+                    WHERE numero_empleado = %s
+                """, (identificador,))
+
+                usuario = cursor.fetchone()
+                if usuario:
+                    tipo_usuario = 'profesor' if usuario['rol'] == 'profesor' else 'admin'
+
             cursor.close()
             conn.close()
 
             if usuario and usuario['password'] == password:
                 # Login exitoso
                 session['user_id'] = usuario['id']
-                session['numero_cuenta'] = usuario['numero_cuenta']
+                session['identificador'] = usuario['identificador']
                 session['nombre'] = usuario['nombre']
                 session['nombref2'] = usuario['nombref2']
                 session['rol'] = usuario['rol']
+                session['tipo_usuario'] = tipo_usuario
                 session['email'] = usuario['email']
+
+                if tipo_usuario in ['profesor', 'admin']:
+                    session['especialidad'] = usuario.get('especialidad')
 
                 # Verificar si es primer login
                 if usuario['primer_login']:
@@ -123,7 +161,7 @@ def login():
                 flash(f'Bienvenido, {usuario["nombre"]}!', 'success')
                 return redirect(url_for('dashboard'))
             else:
-                flash('Número de cuenta o contraseña incorrectos', 'danger')
+                flash('Identificador o contraseña incorrectos', 'danger')
 
         except mysql.connector.Error as e:
             flash(f'Error al verificar credenciales: {e}', 'danger')
@@ -142,17 +180,25 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    """Dashboard principal - diferente para admin y alumno"""
-    if session.get('rol') == 'admin':
+    """Dashboard principal - redirige según tipo de usuario"""
+    tipo = session.get('tipo_usuario')
+
+    if tipo == 'admin':
         return redirect(url_for('dashboard_admin'))
-    else:
+    elif tipo == 'profesor':
+        return redirect(url_for('dashboard_profesor'))
+    else:  # alumno
         return redirect(url_for('dashboard_alumno'))
 
 
 @app.route('/dashboard/alumno')
 @login_required
 def dashboard_alumno():
-    """Dashboard para alumnos - ver sus calificaciones"""
+    """Dashboard para alumnos - ver sus calificaciones en todos sus grupos"""
+    if session.get('tipo_usuario') != 'alumno':
+        flash('Acceso denegado', 'danger')
+        return redirect(url_for('dashboard'))
+
     conn = conectar_db()
     if not conn:
         flash('Error de conexión con la base de datos', 'danger')
@@ -160,6 +206,17 @@ def dashboard_alumno():
 
     try:
         cursor = conn.cursor(dictionary=True)
+
+        # Obtener grupos del alumno
+        cursor.execute("""
+            SELECT g.id, g.nombre, p.nombre as profesor
+            FROM alumnos_grupos ag
+            INNER JOIN grupos g ON ag.grupo_id = g.id
+            LEFT JOIN profesores p ON g.profesor_id = p.id
+            WHERE ag.alumno_id = %s
+        """, (session['user_id'],))
+
+        grupos = cursor.fetchall()
 
         # Obtener calificaciones del alumno
         cursor.execute("""
@@ -170,12 +227,13 @@ def dashboard_alumno():
                 c.fecha_calificacion,
                 c.ruta_pdf_calificado,
                 c.ruta_audio,
-                g.nombre as grupo
+                g.nombre as grupo,
+                p.nombre as profesor
             FROM calificaciones c
             INNER JOIN tareas t ON c.tarea_id = t.id
-            INNER JOIN alumnos a ON c.alumno_id = a.id
             INNER JOIN grupos g ON t.grupo_id = g.id
-            WHERE a.id = %s
+            LEFT JOIN profesores p ON g.profesor_id = p.id
+            WHERE c.alumno_id = %s
             ORDER BY c.fecha_calificacion DESC
         """, (session['user_id'],))
 
@@ -194,6 +252,7 @@ def dashboard_alumno():
 
         return render_template('dashboard_alumno.html',
                              calificaciones=calificaciones,
+                             grupos=grupos,
                              promedio=promedio,
                              tareas_completadas=tareas_completadas)
 
@@ -202,10 +261,99 @@ def dashboard_alumno():
         return redirect(url_for('logout'))
 
 
+@app.route('/dashboard/profesor')
+@profesor_required
+def dashboard_profesor():
+    """Dashboard para profesores - ver sus grupos y calificaciones"""
+    conn = conectar_db()
+    if not conn:
+        flash('Error de conexión con la base de datos', 'danger')
+        return redirect(url_for('logout'))
+
+    try:
+        cursor = conn.cursor(dictionary=True)
+
+        # Obtener grupos del profesor
+        cursor.execute("""
+            SELECT id, nombre, semestre, anio
+            FROM grupos
+            WHERE profesor_id = %s
+            ORDER BY nombre
+        """, (session['user_id'],))
+
+        grupos = cursor.fetchall()
+
+        # Para cada grupo, contar alumnos y tareas
+        for grupo in grupos:
+            # Contar alumnos
+            cursor.execute("""
+                SELECT COUNT(*) as total
+                FROM alumnos_grupos
+                WHERE grupo_id = %s
+            """, (grupo['id'],))
+            grupo['total_alumnos'] = cursor.fetchone()['total']
+
+            # Contar tareas
+            cursor.execute("""
+                SELECT COUNT(*) as total
+                FROM tareas
+                WHERE grupo_id = %s
+            """, (grupo['id'],))
+            grupo['total_tareas'] = cursor.fetchone()['total']
+
+        # Estadísticas generales del profesor
+        cursor.execute("""
+            SELECT COUNT(DISTINCT ag.alumno_id) as total
+            FROM alumnos_grupos ag
+            INNER JOIN grupos g ON ag.grupo_id = g.id
+            WHERE g.profesor_id = %s
+        """, (session['user_id'],))
+        total_alumnos = cursor.fetchone()['total']
+
+        cursor.execute("""
+            SELECT COUNT(*) as total
+            FROM tareas t
+            INNER JOIN grupos g ON t.grupo_id = g.id
+            WHERE g.profesor_id = %s
+        """, (session['user_id'],))
+        total_tareas = cursor.fetchone()['total']
+
+        # Últimas calificaciones de los grupos del profesor
+        cursor.execute("""
+            SELECT
+                a.nombre as alumno,
+                t.nombre as tarea,
+                c.calificacion,
+                c.fecha_calificacion,
+                g.nombre as grupo
+            FROM calificaciones c
+            INNER JOIN alumnos a ON c.alumno_id = a.id
+            INNER JOIN tareas t ON c.tarea_id = t.id
+            INNER JOIN grupos g ON t.grupo_id = g.id
+            WHERE g.profesor_id = %s
+            ORDER BY c.fecha_calificacion DESC
+            LIMIT 15
+        """, (session['user_id'],))
+        ultimas_calificaciones = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        return render_template('dashboard_profesor.html',
+                             grupos=grupos,
+                             total_alumnos=total_alumnos,
+                             total_tareas=total_tareas,
+                             ultimas_calificaciones=ultimas_calificaciones)
+
+    except mysql.connector.Error as e:
+        flash(f'Error al cargar datos: {e}', 'danger')
+        return redirect(url_for('logout'))
+
+
 @app.route('/dashboard/admin')
 @admin_required
 def dashboard_admin():
-    """Dashboard para administradores - estadísticas generales"""
+    """Dashboard para administradores - estadísticas globales"""
     conn = conectar_db()
     if not conn:
         flash('Error de conexión con la base de datos', 'danger')
@@ -215,8 +363,14 @@ def dashboard_admin():
         cursor = conn.cursor(dictionary=True)
 
         # Estadísticas generales
-        cursor.execute("SELECT COUNT(*) as total FROM alumnos WHERE rol='alumno'")
+        cursor.execute("SELECT COUNT(*) as total FROM alumnos")
         total_alumnos = cursor.fetchone()['total']
+
+        cursor.execute("SELECT COUNT(*) as total FROM profesores WHERE rol='profesor'")
+        total_profesores = cursor.fetchone()['total']
+
+        cursor.execute("SELECT COUNT(*) as total FROM profesores WHERE rol='admin'")
+        total_admins = cursor.fetchone()['total']
 
         cursor.execute("SELECT COUNT(*) as total FROM tareas")
         total_tareas = cursor.fetchone()['total']
@@ -233,12 +387,16 @@ def dashboard_admin():
                 a.nombre as alumno,
                 t.nombre as tarea,
                 c.calificacion,
-                c.fecha_calificacion
+                c.fecha_calificacion,
+                g.nombre as grupo,
+                p.nombre as profesor
             FROM calificaciones c
             INNER JOIN alumnos a ON c.alumno_id = a.id
             INNER JOIN tareas t ON c.tarea_id = t.id
+            INNER JOIN grupos g ON t.grupo_id = g.id
+            LEFT JOIN profesores p ON g.profesor_id = p.id
             ORDER BY c.fecha_calificacion DESC
-            LIMIT 10
+            LIMIT 15
         """)
         ultimas_calificaciones = cursor.fetchall()
 
@@ -252,6 +410,8 @@ def dashboard_admin():
 
         return render_template('dashboard_admin.html',
                              total_alumnos=total_alumnos,
+                             total_profesores=total_profesores,
+                             total_admins=total_admins,
                              total_tareas=total_tareas,
                              total_calificaciones=total_calificaciones,
                              total_grupos=total_grupos,
@@ -293,9 +453,12 @@ def cambiar_password():
         try:
             cursor = conn.cursor(dictionary=True)
 
+            # Determinar tabla según tipo de usuario
+            tabla = 'alumnos' if session.get('tipo_usuario') == 'alumno' else 'profesores'
+
             # Verificar contraseña actual
-            cursor.execute("""
-                SELECT password FROM alumnos WHERE id = %s
+            cursor.execute(f"""
+                SELECT password FROM {tabla} WHERE id = %s
             """, (session['user_id'],))
 
             usuario = cursor.fetchone()
@@ -307,8 +470,8 @@ def cambiar_password():
                 return render_template('cambiar_password.html')
 
             # Actualizar contraseña
-            cursor.execute("""
-                UPDATE alumnos
+            cursor.execute(f"""
+                UPDATE {tabla}
                 SET password = %s, primer_login = FALSE
                 WHERE id = %s
             """, (password_nueva, session['user_id']))
@@ -340,9 +503,11 @@ def api_calificaciones_alumno(alumno_id):
             SELECT
                 t.nombre as tarea,
                 c.calificacion,
-                c.fecha_calificacion
+                c.fecha_calificacion,
+                g.nombre as grupo
             FROM calificaciones c
             INNER JOIN tareas t ON c.tarea_id = t.id
+            INNER JOIN grupos g ON t.grupo_id = g.id
             WHERE c.alumno_id = %s
             ORDER BY c.fecha_calificacion DESC
         """, (alumno_id,))
@@ -367,6 +532,10 @@ if __name__ == '__main__':
     print("SISTEMA DE CALIFICACIONES")
     print("Starlink Hi-Tech Style")
     print("="*60)
+    print("\nTipos de usuarios:")
+    print("  - Alumnos: número de cuenta")
+    print("  - Profesores: número de empleado")
+    print("  - Administradores: número de empleado (rol admin)")
     print("\nIniciando servidor...")
     print("Accede en: http://localhost:5000")
     print("="*60)
