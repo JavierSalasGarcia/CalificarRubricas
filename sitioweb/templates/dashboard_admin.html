@@ -23,6 +23,30 @@
         </div>
 
         <div class="stat-card">
+            <div class="stat-icon">👨‍🏫</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_profesores }}</div>
+                <div class="stat-label">Total Profesores</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">🛡️</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_admins }}</div>
+                <div class="stat-label">Administradores</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">🏫</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_grupos }}</div>
+                <div class="stat-label">Grupos Activos</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
             <div class="stat-icon">📚</div>
             <div class="stat-content">
                 <div class="stat-value">{{ total_tareas }}</div>
@@ -43,14 +67,6 @@
             <div class="stat-content">
                 <div class="stat-value">{{ "%.1f"|format(promedio_general) }}</div>
                 <div class="stat-label">Promedio General</div>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">🏫</div>
-            <div class="stat-content">
-                <div class="stat-value">{{ total_grupos }}</div>
-                <div class="stat-label">Grupos Activos</div>
             </div>
         </div>
     </div>
@@ -113,6 +129,15 @@
                 <h3 class="action-title">Cargar Alumnos</h3>
                 <p class="action-desc">Importar alumnos desde archivo CSV</p>
                 <button class="btn-action" onclick="alert('Ejecutar: python cargar_alumnos.py')">
+                    Ejecutar Script
+                </button>
+            </div>
+
+            <div class="action-card">
+                <div class="action-icon">👨‍🏫</div>
+                <h3 class="action-title">Cargar Profesores</h3>
+                <p class="action-desc">Importar profesores desde archivo CSV</p>
+                <button class="btn-action" onclick="alert('Ejecutar: python cargar_profesores.py')">
                     Ejecutar Script
                 </button>
             </div>
