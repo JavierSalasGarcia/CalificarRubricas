@@ -189,21 +189,28 @@ def construir_prompt(rubrica: str, transcripcion: Optional[Dict]) -> str:
 
 RÚBRICA DE EVALUACIÓN:
 {rubrica}
-
-INSTRUCCIONES:
-1. Analiza TODO el contenido del PDF adjunto, incluyendo texto, fórmulas, diagramas e imágenes
-2. Evalúa cada criterio de la rúbrica de manera justa y objetiva
-3. Proporciona retroalimentación constructiva y específica
-4. La calificación debe estar en escala de 0.0 a 10.0 con una posición decimal
 """
 
     if transcripcion:
         prompt += f"""
-OBSERVACIONES DEL PROFESOR (Audio transcrito):
-El profesor que revisó esta tarea grabó las siguientes observaciones:
+⚠️ OBSERVACIONES DEL PROFESOR (PRIORITARIAS):
+El profesor que revisó esta tarea grabó las siguientes observaciones de audio:
 "{transcripcion.get('transcripcion', '')}"
 
-Estas observaciones pueden ayudarte a contextualizar mejor la evaluación.
+IMPORTANTE: Estas observaciones del profesor son PRIORITARIAS y deben guiar tu evaluación.
+- Considera los comentarios del profesor como la opinión autorizada sobre este trabajo
+- Ajusta tu calificación según los puntos específicos mencionados por el profesor
+- Si el profesor señala errores o aciertos concretos, refléjalos en tu evaluación
+- Las observaciones del audio tienen mayor peso que tu análisis independiente del PDF
+"""
+
+    prompt += """
+INSTRUCCIONES:
+1. Analiza TODO el contenido del PDF adjunto, incluyendo texto, fórmulas, diagramas e imágenes
+2. Si hay observaciones del profesor, úsalas como guía PRINCIPAL para tu evaluación
+3. Evalúa cada criterio de la rúbrica de manera justa y objetiva
+4. Proporciona retroalimentación constructiva y específica
+5. La calificación debe estar en escala de 0.0 a 10.0 con una posición decimal
 """
 
     prompt += """

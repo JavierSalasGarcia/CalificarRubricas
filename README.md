@@ -404,6 +404,84 @@ pip install openai-whisper
 
 ---
 
+## 🌐 Sitio Web - Visualización de Calificaciones
+
+El sistema incluye una **plataforma web** con diseño **Starlink Hi-Tech Minimalista Oscuro** para que alumnos y administradores visualicen calificaciones.
+
+### Características del Sitio Web
+
+- **Diseño oscuro profesional** inspirado en Starlink
+- **Fondo animado** con efecto de estrellas en movimiento
+- **Interfaz hi-tech** con acentos en cyan (#00d4ff)
+- **100% responsive** adaptable a cualquier dispositivo
+- **Autenticación segura** con roles (alumno/admin)
+- **Dashboards personalizados** según el tipo de usuario
+
+### Ejecutar el Sitio Web
+
+```bash
+cd sitioweb
+pip install -r requirements.txt
+python app.py
+```
+
+Accede en: **http://localhost:5000**
+
+### Credenciales de Acceso
+
+**Alumnos:**
+- Usuario: Número de cuenta
+- Contraseña inicial: Número de cuenta (deben cambiarla en el primer login)
+
+**Administradores:**
+- Deben tener `rol='admin'` en la base de datos
+
+### Funcionalidades
+
+#### Para Alumnos:
+- ✅ Ver todas sus calificaciones
+- ✅ Ver promedio general
+- ✅ Descargar PDFs calificados
+- ✅ Escuchar retroalimentación en audio
+- ✅ Cambiar contraseña
+
+#### Para Administradores:
+- ✅ Ver estadísticas generales del sistema
+- ✅ Ver todas las calificaciones de todos los alumnos
+- ✅ Acceso rápido a scripts de administración
+- ✅ API endpoints para consultas avanzadas
+- ✅ Panel de control completo
+
+### Estructura del Sitio Web
+
+```
+sitioweb/
+├── app.py                      # Servidor Flask
+├── requirements.txt            # Dependencias
+├── README.md                   # Documentación del sitio
+│
+├── templates/                  # Plantillas HTML
+│   ├── base.html
+│   ├── login.html
+│   ├── dashboard_alumno.html
+│   ├── dashboard_admin.html
+│   └── cambiar_password.html
+│
+└── static/
+    ├── css/style.css          # Estilos Starlink
+    └── js/main.js             # JavaScript interactivo
+```
+
+### Capturas de Pantalla Conceptuales
+
+**Login**: Página de acceso con efecto de estrellas animadas y diseño minimalista
+**Dashboard Alumno**: Tarjetas con estadísticas, tabla de calificaciones, gráfico de progreso
+**Dashboard Admin**: Panel de control con estadísticas generales y acciones rápidas
+
+📖 **Documentación completa**: Ver `sitioweb/README.md`
+
+---
+
 ## 👥 Soporte
 
 Para problemas o dudas, contacta al administrador del sistema.

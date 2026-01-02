@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Dashboard - Alumno{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">Bienvenido, {{ session.nombre }}</h1>
+        <p class="dashboard-subtitle">Número de cuenta: {{ session.numero_cuenta }}</p>
+    </div>
+
+    <!-- Estadísticas principales -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📚</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ tareas_completadas }}</div>
+                <div class="stat-label">Tareas Calificadas</div>
+            </div>
+        </div>
+
+        <div class="stat-card highlight">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ "%.1f"|format(promedio) }}</div>
+                <div class="stat-label">Promedio General</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ session.nombref2 }}</div>
+                <div class="stat-label">Nombre Oficial</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de calificaciones -->
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">📋</span>
+            Mis Calificaciones
+        </h2>
+
+        {% if calificaciones %}
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tarea</th>
+                        <th>Grupo</th>
+                        <th>Calificación</th>
+                        <th>Puntos Máximos</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cal in calificaciones %}
+                    <tr class="table-row">
+                        <td class="task-name">{{ cal.tarea }}</td>
+                        <td>{{ cal.grupo }}</td>
+                        <td>
+                            <span class="grade-badge grade-{{ 'excellent' if cal.calificacion >= 9 else 'good' if cal.calificacion >= 7 else 'average' if cal.calificacion >= 6 else 'low' }}">
+                                {{ "%.1f"|format(cal.calificacion) }}
+                            </span>
+                        </td>
+                        <td>{{ "%.1f"|format(cal.puntos_maximos) }}</td>
+                        <td>{{ cal.fecha_calificacion.strftime('%d/%m/%Y') if cal.fecha_calificacion else 'N/A' }}</td>
+                        <td>
+                            {% if cal.ruta_pdf_calificado %}
+                            <button class="btn-sm btn-view" onclick="alert('Función para descargar PDF - implementar según rutas del servidor')">
+                                📄 Ver PDF
+                            </button>
+                            {% endif %}
+                            {% if cal.ruta_audio %}
+                            <button class="btn-sm btn-audio" onclick="alert('Función para reproducir audio - implementar según rutas del servidor')">
+                                🔊 Audio
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <h3 class="empty-title">No hay calificaciones disponibles</h3>
+            <p class="empty-text">
+                Tus calificaciones aparecerán aquí una vez que el profesor las suba al sistema.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Gráfico de progreso (opcional) -->
+    {% if calificaciones %}
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">📈</span>
+            Progreso Académico
+        </h2>
+        <div class="progress-card">
+            <div class="progress-header">
+                <span class="progress-label">Rendimiento general</span>
+                <span class="progress-value">{{ "%.1f"|format(promedio) }}/10.0</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: {{ (promedio/10)*100 }}%"></div>
+            </div>
+            <div class="progress-footer">
+                {% if promedio >= 9 %}
+                <p class="progress-message excellent">🌟 Excelente desempeño, sigue así!</p>
+                {% elif promedio >= 7 %}
+                <p class="progress-message good">👍 Buen desempeño, puedes mejorarlo!</p>
+                {% elif promedio >= 6 %}
+                <p class="progress-message average">📚 Aprobado, hay margen de mejora</p>
+                {% else %}
+                <p class="progress-message low">💪 Esfuérzate más en las próximas tareas</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

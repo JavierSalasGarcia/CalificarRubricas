@@ -66,13 +66,17 @@ def crear_tablas(conn):
             numero_cuenta VARCHAR(20) UNIQUE NOT NULL,
             nombre VARCHAR(255) NOT NULL,
             nombref2 VARCHAR(255) NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            rol ENUM('alumno', 'admin') DEFAULT 'alumno',
+            primer_login BOOLEAN DEFAULT TRUE,
             grupo_id INT,
             team_id INT DEFAULT 1,
             email VARCHAR(255),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE,
             INDEX idx_numero_cuenta (numero_cuenta),
-            INDEX idx_nombre (nombre)
+            INDEX idx_nombre (nombre),
+            INDEX idx_rol (rol)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """)
 
