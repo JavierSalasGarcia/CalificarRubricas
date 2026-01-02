@@ -1,0 +1,41 @@
+# Sistema de Calificación Automática con Gemini y Whisper
+# Instalación: pip install -r requirements.txt
+
+# ===== FASE 1: Grabación de Audio (tareas.py) =====
+sounddevice>=0.4.6          # Grabación de audio desde micrófono
+numpy>=1.24.0               # Procesamiento de datos de audio
+
+# ===== FASE 2: Transcripción con Whisper =====
+openai-whisper>=20231117    # Whisper para transcripción de audio
+# Dependencias de Whisper (se instalan automáticamente):
+# - torch
+# - torchaudio
+# - ffmpeg-python
+
+# ===== FASE 3: Calificación con Gemini =====
+google-generativeai>=0.3.0  # API de Gemini
+
+# ===== Base de Datos =====
+mysql-connector-python>=8.0.33  # Conexión a MySQL
+
+# ===== Procesamiento de PDFs =====
+PyPDF2>=3.0.0               # Lectura y fusión de PDFs
+reportlab>=4.0.0            # Generación de PDFs (página de calificación)
+
+# ===== Utilidades =====
+pathlib                     # Manejo de rutas (incluido en Python 3.4+)
+
+# ===== OPCIONAL: Conversión de audio =====
+# Si quieres convertir WAV a MP3, instala ffmpeg manualmente
+# Windows: choco install ffmpeg
+# macOS: brew install ffmpeg
+# Linux: sudo apt-get install ffmpeg
+
+# ===== NOTA IMPORTANTE =====
+# Para Whisper en Windows, necesitas:
+# 1. Python 3.8 - 3.11 (recomendado 3.10)
+# 2. Visual Studio Build Tools (para compilar algunas dependencias)
+# 3. CUDA Toolkit (opcional, solo si tienes GPU NVIDIA para acelerar)
+
+# Para verificar la instalación de Whisper:
+# python -c "import whisper; print(whisper.__version__)"
