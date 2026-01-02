@@ -46,19 +46,42 @@ def crear_tablas(conn):
     """Crea todas las tablas necesarias para el sistema"""
     cursor = conn.cursor()
 
-    # Tabla de Grupos
-    print("\n[+] Creando tabla 'grupos'...")
+    # Tabla de Profesores
+    print("\n[+] Creando tabla 'profesores'...")
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS profesores (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            numero_empleado VARCHAR(20) UNIQUE NOT NULL,
+            nombre VARCHAR(255) NOT NULL,
+            nombref2 VARCHAR(255) NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            rol ENUM('profesor', 'admin') DEFAULT 'profesor',
+            primer_login BOOLEAN DEFAULT TRUE,
+            email VARCHAR(255),
+            especialidad VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_numero_empleado (numero_empleado),
+            INDEX idx_nombre (nombre),
+            INDEX idx_rol (rol)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """)
+
+    # Tabla de Grupos (ahora con profesor_id)
+    print("[+] Creando tabla 'grupos'...")
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS grupos (
             id INT AUTO_INCREMENT PRIMARY KEY,
             nombre VARCHAR(255) UNIQUE NOT NULL,
+            profesor_id INT,
             semestre VARCHAR(50),
             anio INT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (profesor_id) REFERENCES profesores(id) ON DELETE SET NULL,
+            INDEX idx_profesor (profesor_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """)
 
-    # Tabla de Alumnos
+    # Tabla de Alumnos (sin grupo_id, ahora con relación muchos a muchos)
     print("[+] Creando tabla 'alumnos'...")
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS alumnos (
@@ -67,16 +90,28 @@ def crear_tablas(conn):
             nombre VARCHAR(255) NOT NULL,
             nombref2 VARCHAR(255) NOT NULL,
             password VARCHAR(255) NOT NULL,
-            rol ENUM('alumno', 'admin') DEFAULT 'alumno',
             primer_login BOOLEAN DEFAULT TRUE,
-            grupo_id INT,
-            team_id INT DEFAULT 1,
             email VARCHAR(255),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE,
             INDEX idx_numero_cuenta (numero_cuenta),
-            INDEX idx_nombre (nombre),
-            INDEX idx_rol (rol)
+            INDEX idx_nombre (nombre)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """)
+
+    # Tabla de relación Alumnos-Grupos (muchos a muchos)
+    print("[+] Creando tabla 'alumnos_grupos'...")
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS alumnos_grupos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            alumno_id INT NOT NULL,
+            grupo_id INT NOT NULL,
+            team_id INT DEFAULT 1,
+            fecha_inscripcion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (alumno_id) REFERENCES alumnos(id) ON DELETE CASCADE,
+            FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_alumno_grupo (alumno_id, grupo_id),
+            INDEX idx_alumno (alumno_id),
+            INDEX idx_grupo (grupo_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """)
 
@@ -130,7 +165,7 @@ def crear_tablas(conn):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (alumno_id) REFERENCES alumnos(id) ON DELETE CASCADE,
             FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE,
-            UNIQUE KEY unique_asistencia (alumno_id, fecha),
+            UNIQUE KEY unique_asistencia (alumno_id, grupo_id, fecha),
             INDEX idx_fecha (fecha),
             INDEX idx_grupo_fecha (grupo_id, fecha)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -149,7 +184,7 @@ def mostrar_estructura(conn):
     print("ESTRUCTURA DE LA BASE DE DATOS")
     print("="*60)
 
-    tablas = ['grupos', 'alumnos', 'tareas', 'calificaciones', 'asistencias']
+    tablas = ['profesores', 'grupos', 'alumnos', 'alumnos_grupos', 'tareas', 'calificaciones', 'asistencias']
 
     for tabla in tablas:
         cursor.execute(f"DESCRIBE {tabla}")
