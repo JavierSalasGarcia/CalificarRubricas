@@ -1,0 +1,27 @@
+{
+  "group": "MCI-2025B Instrumentación Electrónica - Submitted files",
+  "individual": true,
+  "students": [
+    {
+      "name": "Carlos Alejandro Guadarrama Romero",
+      "team_id": 1
+    },
+    {
+      "name": "Citlali Irais Cano Del Razo",
+      "team_id": 2
+    },
+    {
+      "name": "Edwin Sebna Albarran Garcia",
+      "team_id": 3
+    },
+    {
+      "name": "Jesus Alexander Bernal Sanchez",
+      "team_id": 4
+    },
+    {
+      "name": "Jimena Sanchez Guerrero",
+      "team_id": 3
+    }
+  ],
+  "default_team_id": 1
+}
