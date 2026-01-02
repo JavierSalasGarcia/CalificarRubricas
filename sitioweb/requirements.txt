@@ -1,0 +1,26 @@
+# Sitio Web - Sistema de Calificaciones
+# Instalación: pip install -r requirements.txt
+
+# ===== FRAMEWORK WEB =====
+Flask>=3.0.0                # Framework web principal
+Werkzeug>=3.0.0             # WSGI toolkit (incluido con Flask)
+
+# ===== BASE DE DATOS =====
+mysql-connector-python>=8.0.33  # Conexión a MySQL
+
+# ===== PRODUCCIÓN (OPCIONAL) =====
+# gunicorn>=21.2.0          # Servidor WSGI para producción
+# waitress>=2.1.2           # Servidor WSGI multiplataforma (Windows-friendly)
+
+# ===== UTILIDADES =====
+python-dotenv>=1.0.0        # Variables de entorno (opcional)
+
+# ===== NOTAS =====
+# Para ejecutar en desarrollo:
+#   python app.py
+#
+# Para ejecutar en producción (Linux/Mac):
+#   gunicorn -w 4 -b 0.0.0.0:5000 app:app
+#
+# Para ejecutar en producción (Windows):
+#   waitress-serve --host=0.0.0.0 --port=5000 app:app

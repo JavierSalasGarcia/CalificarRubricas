@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Administrador{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header admin">
+        <h1 class="dashboard-title">
+            <span class="admin-badge">🛡️ ADMIN</span>
+            Panel de Administración
+        </h1>
+        <p class="dashboard-subtitle">Bienvenido, {{ session.nombre }}</p>
+    </div>
+
+    <!-- Estadísticas Generales -->
+    <div class="stats-grid-admin">
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_alumnos }}</div>
+                <div class="stat-label">Total Alumnos</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">📚</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_tareas }}</div>
+                <div class="stat-label">Total Tareas</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_calificaciones }}</div>
+                <div class="stat-label">Calificaciones Registradas</div>
+            </div>
+        </div>
+
+        <div class="stat-card highlight">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ "%.1f"|format(promedio_general) }}</div>
+                <div class="stat-label">Promedio General</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">🏫</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ total_grupos }}</div>
+                <div class="stat-label">Grupos Activos</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Últimas Calificaciones -->
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">🕒</span>
+            Últimas Calificaciones Registradas
+        </h2>
+
+        {% if ultimas_calificaciones %}
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Alumno</th>
+                        <th>Tarea</th>
+                        <th>Calificación</th>
+                        <th>Fecha de Registro</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cal in ultimas_calificaciones %}
+                    <tr class="table-row">
+                        <td class="student-name">{{ cal.alumno }}</td>
+                        <td>{{ cal.tarea }}</td>
+                        <td>
+                            <span class="grade-badge grade-{{ 'excellent' if cal.calificacion >= 9 else 'good' if cal.calificacion >= 7 else 'average' if cal.calificacion >= 6 else 'low' }}">
+                                {{ "%.1f"|format(cal.calificacion) }}
+                            </span>
+                        </td>
+                        <td>{{ cal.fecha_calificacion.strftime('%d/%m/%Y %H:%M') if cal.fecha_calificacion else 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <h3 class="empty-title">No hay calificaciones registradas</h3>
+            <p class="empty-text">
+                Las calificaciones aparecerán aquí una vez que se suban al sistema.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">⚡</span>
+            Acciones Rápidas
+        </h2>
+
+        <div class="actions-grid">
+            <div class="action-card">
+                <div class="action-icon">📥</div>
+                <h3 class="action-title">Cargar Alumnos</h3>
+                <p class="action-desc">Importar alumnos desde archivo CSV</p>
+                <button class="btn-action" onclick="alert('Ejecutar: python cargar_alumnos.py')">
+                    Ejecutar Script
+                </button>
+            </div>
+
+            <div class="action-card">
+                <div class="action-icon">🎤</div>
+                <h3 class="action-title">Transcribir Audios</h3>
+                <p class="action-desc">Procesar audios con Whisper</p>
+                <button class="btn-action" onclick="alert('Ejecutar: python transcribir_audios.py')">
+                    Ejecutar Script
+                </button>
+            </div>
+
+            <div class="action-card">
+                <div class="action-icon">🤖</div>
+                <h3 class="action-title">Calificar con IA</h3>
+                <p class="action-desc">Calificar tareas con Gemini</p>
+                <button class="btn-action" onclick="alert('Ejecutar: python calificar_gemini.py')">
+                    Ejecutar Script
+                </button>
+            </div>
+
+            <div class="action-card">
+                <div class="action-icon">🗄️</div>
+                <h3 class="action-title">Base de Datos</h3>
+                <p class="action-desc">Configurar tablas de la BD</p>
+                <button class="btn-action" onclick="alert('Ejecutar: python db_setup.py')">
+                    Ejecutar Script
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información del Sistema -->
+    <div class="section">
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="info-header">
+                    <span class="info-icon">🤖</span>
+                    <span class="info-title">Motor de IA</span>
+                </div>
+                <div class="info-content">
+                    <p><strong>Gemini:</strong> 1.5 Flash</p>
+                    <p><strong>Whisper:</strong> Medium (local)</p>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-header">
+                    <span class="info-icon">⚙️</span>
+                    <span class="info-title">Sistema</span>
+                </div>
+                <div class="info-content">
+                    <p><strong>Versión:</strong> 1.0</p>
+                    <p><strong>Desarrollador:</strong> Javier Salas García</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

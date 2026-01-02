@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Calificaciones{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Fondo animado de estrellas -->
+    <div class="stars"></div>
+    <div class="stars2"></div>
+    <div class="stars3"></div>
+
+    <!-- Navbar (solo si está logueado) -->
+    {% if session.user_id %}
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="brand-icon">◬</span>
+                <span class="brand-text">Sistema de Calificaciones</span>
+            </div>
+            <div class="nav-menu">
+                <div class="nav-user">
+                    <span class="user-icon">👤</span>
+                    <span class="user-name">{{ session.nombre }}</span>
+                    {% if session.rol == 'admin' %}
+                    <span class="user-badge admin">ADMIN</span>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link">
+                    <span class="link-icon">📊</span>
+                    Dashboard
+                </a>
+                <a href="{{ url_for('cambiar_password') }}" class="nav-link">
+                    <span class="link-icon">🔑</span>
+                    Contraseña
+                </a>
+                <a href="{{ url_for('logout') }}" class="nav-link logout">
+                    <span class="link-icon">🚪</span>
+                    Salir
+                </a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Contenido principal -->
+    <main class="main-content {% if not session.user_id %}centered{% endif %}">
+        <!-- Mensajes flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-container">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">
+                            <span class="flash-icon">
+                                {% if category == 'success' %}✓{% elif category == 'danger' %}✗{% elif category == 'warning' %}⚠{% else %}ℹ{% endif %}
+                            </span>
+                            <span class="flash-text">{{ message }}</span>
+                            <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2026 Sistema de Calificaciones | Desarrollado por Javier Salas García</p>
+            <p class="footer-version">v1.0 | Gemini & Whisper AI</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

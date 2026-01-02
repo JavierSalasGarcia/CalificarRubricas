@@ -134,7 +134,7 @@ def cargar_alumnos_db(conn, grupo_id: int, alumnos: List[Dict]) -> Dict:
             result = cursor.fetchone()
 
             if result:
-                # Actualizar alumno existente
+                # Actualizar alumno existente (no actualizar password si ya existe)
                 cursor.execute("""
                     UPDATE alumnos
                     SET nombre = %s, nombref2 = %s, grupo_id = %s, email = %s
@@ -150,18 +150,25 @@ def cargar_alumnos_db(conn, grupo_id: int, alumnos: List[Dict]) -> Dict:
                 print(f"  ↻ Actualizado: {alumno['nombre']} ({alumno['numero_cuenta']})")
             else:
                 # Insertar nuevo alumno
+                # Password por defecto = número de cuenta
+                password_default = alumno['numero_cuenta']
+
                 cursor.execute("""
-                    INSERT INTO alumnos (numero_cuenta, nombre, nombref2, grupo_id, email)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO alumnos
+                    (numero_cuenta, nombre, nombref2, password, rol, primer_login, grupo_id, email)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     alumno['numero_cuenta'],
                     alumno['nombre'],
                     alumno['nombref2'],
+                    password_default,
+                    'alumno',  # Rol por defecto
+                    True,      # Primer login = True (debe cambiar contraseña)
                     grupo_id,
                     alumno['email']
                 ))
                 stats['insertados'] += 1
-                print(f"  ✓ Insertado: {alumno['nombre']} ({alumno['numero_cuenta']})")
+                print(f"  ✓ Insertado: {alumno['nombre']} ({alumno['numero_cuenta']}) - Pass: {password_default}")
 
             conn.commit()
 
