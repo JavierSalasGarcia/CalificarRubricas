@@ -1,6 +1,6 @@
-numero_cuenta,nombre,nombref2,email
-12345,Carlos Alejandro Guadarrama Romero,"Guadarrama Romero, Carlos Alejandro",carlos.guadarrama@ejemplo.com
-67890,Citlali Irais Cano Del Razo,"Cano Del Razo, Citlali Irais",citlali.cano@ejemplo.com
-11111,Edwin Sebna Albarran Garcia,"Albarran Garcia, Edwin Sebna",edwin.albarran@ejemplo.com
-22222,Jimena Sanchez Guerrero,"Sanchez Guerrero, Jimena",jimena.sanchez@ejemplo.com
-33333,Jesus Alexander Bernal Sanchez,"Bernal Sanchez, Jesus Alexander",jesus.bernal@ejemplo.com
+numero_cuenta,nombre,nombref2,email,grupos
+12345,Carlos Alejandro Guadarrama Romero,"Guadarrama Romero, Carlos Alejandro",carlos.guadarrama@ejemplo.com,MCI-2025B Instrumentación Electrónica
+67890,Citlali Irais Cano Del Razo,"Cano Del Razo, Citlali Irais",citlali.cano@ejemplo.com,MCI-2025B Instrumentación Electrónica|Grupo Avanzado
+11111,Edwin Sebna Albarran Garcia,"Albarran Garcia, Edwin Sebna",edwin.albarran@ejemplo.com,MCI-2025B Instrumentación Electrónica
+22222,Jimena Sanchez Guerrero,"Sanchez Guerrero, Jimena",jimena.sanchez@ejemplo.com,MCI-2025B Instrumentación Electrónica
+33333,Jesus Alexander Bernal Sanchez,"Bernal Sanchez, Jesus Alexander",jesus.bernal@ejemplo.com,Grupo Avanzado

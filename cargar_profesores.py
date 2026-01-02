@@ -1,12 +1,13 @@
 """
-Script para cargar alumnos desde archivos CSV a la base de datos
-Formato del CSV: <nombre>.csv con columnas: numero_cuenta,nombre,nombref2,email,grupos
+Script para cargar profesores desde archivos CSV a la base de datos
+Formato del CSV: profesores.csv con columnas: numero_empleado,nombre,nombref2,email,especialidad,rol,grupos
 
-nombre = Formato sistema (Nombre Apellidos) - usado en tareas.py
+nombre = Formato sistema (Nombre Apellidos)
 nombref2 = Formato oficial (Apellidos, Nombre)
-grupos = Lista de grupos separados por | (pipe), ejemplo: "Grupo1|Grupo2"
+rol = 'profesor' o 'admin'
+grupos = Lista de grupos que imparte, separados por | (pipe), ejemplo: "Grupo1|Grupo2"
 
-Un alumno puede estar inscrito en múltiples grupos
+Un profesor puede impartir múltiples grupos
 """
 
 import csv
@@ -44,13 +45,12 @@ def conectar_db(config):
         raise
 
 
-def leer_csv_alumnos(csv_path: Path) -> List[Dict]:
+def leer_csv_profesores(csv_path: Path) -> List[Dict]:
     """
-    Lee el archivo CSV de alumnos
-    Formato esperado: numero_cuenta,nombre,nombref2,email,grupos
-    grupos es opcional y puede contener múltiples grupos separados por |
+    Lee el archivo CSV de profesores
+    Formato esperado: numero_empleado,nombre,nombref2,email,especialidad,rol,grupos
     """
-    alumnos = []
+    profesores = []
 
     if not csv_path.exists():
         raise FileNotFoundError(f"No se encontró el archivo: {csv_path}")
@@ -59,7 +59,7 @@ def leer_csv_alumnos(csv_path: Path) -> List[Dict]:
         reader = csv.DictReader(f)
 
         # Verificar que existan las columnas necesarias
-        columnas_requeridas = {'numero_cuenta', 'nombre', 'nombref2'}
+        columnas_requeridas = {'numero_empleado', 'nombre', 'nombref2'}
         columnas_archivo = set(reader.fieldnames)
 
         if not columnas_requeridas.issubset(columnas_archivo):
@@ -71,28 +71,35 @@ def leer_csv_alumnos(csv_path: Path) -> List[Dict]:
 
         for row in reader:
             # Limpiar espacios en blanco
-            alumno = {
-                'numero_cuenta': row['numero_cuenta'].strip(),
+            profesor = {
+                'numero_empleado': row['numero_empleado'].strip(),
                 'nombre': row['nombre'].strip(),
                 'nombref2': row['nombref2'].strip(),
                 'email': row.get('email', '').strip() if row.get('email') else None,
+                'especialidad': row.get('especialidad', '').strip() if row.get('especialidad') else None,
+                'rol': row.get('rol', 'profesor').strip().lower(),  # Default: profesor
                 'grupos': []
             }
+
+            # Validar rol
+            if profesor['rol'] not in ['profesor', 'admin']:
+                print(f"[!] Advertencia: Rol inválido '{profesor['rol']}' para {profesor['nombre']}, usando 'profesor'")
+                profesor['rol'] = 'profesor'
 
             # Procesar grupos (pueden ser múltiples separados por |)
             if 'grupos' in row and row['grupos']:
                 grupos_raw = row['grupos'].strip()
                 if grupos_raw:
-                    alumno['grupos'] = [g.strip() for g in grupos_raw.split('|') if g.strip()]
+                    profesor['grupos'] = [g.strip() for g in grupos_raw.split('|') if g.strip()]
 
-            # Validar que al menos tenga número de cuenta y nombre
-            if not alumno['numero_cuenta'] or not alumno['nombre']:
+            # Validar que al menos tenga número de empleado y nombre
+            if not profesor['numero_empleado'] or not profesor['nombre']:
                 print(f"[!] Advertencia: Fila ignorada por datos incompletos: {row}")
                 continue
 
-            alumnos.append(alumno)
+            profesores.append(profesor)
 
-    return alumnos
+    return profesores
 
 
 def obtener_o_crear_grupos(conn, nombres_grupos: List[str]) -> Dict[str, int]:
@@ -112,7 +119,7 @@ def obtener_o_crear_grupos(conn, nombres_grupos: List[str]) -> Dict[str, int]:
             grupo_ids[nombre_grupo] = result[0]
             print(f"[+] Grupo existente: {nombre_grupo} (ID: {result[0]})")
         else:
-            # Crear nuevo grupo (sin profesor asignado inicialmente)
+            # Crear nuevo grupo (el profesor se asignará después)
             cursor.execute(
                 "INSERT INTO grupos (nombre) VALUES (%s)",
                 (nombre_grupo,)
@@ -125,23 +132,23 @@ def obtener_o_crear_grupos(conn, nombres_grupos: List[str]) -> Dict[str, int]:
     return grupo_ids
 
 
-def cargar_alumnos_db(conn, alumnos: List[Dict]) -> Dict:
+def cargar_profesores_db(conn, profesores: List[Dict]) -> Dict:
     """
-    Carga los alumnos a la base de datos y los asocia con sus grupos
+    Carga los profesores a la base de datos y los asocia con sus grupos
     Retorna estadísticas de la carga
     """
     cursor = conn.cursor()
     stats = {
         'insertados': 0,
         'actualizados': 0,
-        'grupos_asociados': 0,
+        'grupos_asignados': 0,
         'errores': 0
     }
 
     # Recolectar todos los nombres de grupos únicos
     todos_grupos = set()
-    for alumno in alumnos:
-        todos_grupos.update(alumno['grupos'])
+    for profesor in profesores:
+        todos_grupos.update(profesor['grupos'])
 
     # Crear/obtener IDs de todos los grupos
     if todos_grupos:
@@ -150,80 +157,78 @@ def cargar_alumnos_db(conn, alumnos: List[Dict]) -> Dict:
     else:
         grupo_ids_map = {}
 
-    # Procesar cada alumno
-    print(f"\n[+] Procesando {len(alumnos)} alumnos...")
-    for alumno in alumnos:
+    # Procesar cada profesor
+    print(f"\n[+] Procesando {len(profesores)} profesores...")
+    for profesor in profesores:
         try:
-            # Verificar si el alumno ya existe (por número de cuenta)
+            # Verificar si el profesor ya existe (por número de empleado)
             cursor.execute(
-                "SELECT id FROM alumnos WHERE numero_cuenta = %s",
-                (alumno['numero_cuenta'],)
+                "SELECT id FROM profesores WHERE numero_empleado = %s",
+                (profesor['numero_empleado'],)
             )
             result = cursor.fetchone()
 
             if result:
-                # Actualizar alumno existente (no actualizar password)
-                alumno_id = result[0]
+                # Actualizar profesor existente (no actualizar password)
+                profesor_id = result[0]
                 cursor.execute("""
-                    UPDATE alumnos
-                    SET nombre = %s, nombref2 = %s, email = %s
-                    WHERE numero_cuenta = %s
+                    UPDATE profesores
+                    SET nombre = %s, nombref2 = %s, email = %s, especialidad = %s, rol = %s
+                    WHERE numero_empleado = %s
                 """, (
-                    alumno['nombre'],
-                    alumno['nombref2'],
-                    alumno['email'],
-                    alumno['numero_cuenta']
+                    profesor['nombre'],
+                    profesor['nombref2'],
+                    profesor['email'],
+                    profesor['especialidad'],
+                    profesor['rol'],
+                    profesor['numero_empleado']
                 ))
                 stats['actualizados'] += 1
-                print(f"  ↻ Actualizado: {alumno['nombre']} ({alumno['numero_cuenta']})")
+                print(f"  ↻ Actualizado: {profesor['nombre']} ({profesor['numero_empleado']}) - Rol: {profesor['rol']}")
             else:
-                # Insertar nuevo alumno
-                # Password por defecto = número de cuenta
-                password_default = alumno['numero_cuenta']
+                # Insertar nuevo profesor
+                # Password por defecto = número de empleado
+                password_default = profesor['numero_empleado']
 
                 cursor.execute("""
-                    INSERT INTO alumnos
-                    (numero_cuenta, nombre, nombref2, password, primer_login, email)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO profesores
+                    (numero_empleado, nombre, nombref2, password, rol, primer_login, email, especialidad)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
-                    alumno['numero_cuenta'],
-                    alumno['nombre'],
-                    alumno['nombref2'],
+                    profesor['numero_empleado'],
+                    profesor['nombre'],
+                    profesor['nombref2'],
                     password_default,
+                    profesor['rol'],
                     True,  # Primer login = True
-                    alumno['email']
+                    profesor['email'],
+                    profesor['especialidad']
                 ))
-                alumno_id = cursor.lastrowid
+                profesor_id = cursor.lastrowid
                 stats['insertados'] += 1
-                print(f"  ✓ Insertado: {alumno['nombre']} ({alumno['numero_cuenta']}) - Pass: {password_default}")
+                print(f"  ✓ Insertado: {profesor['nombre']} ({profesor['numero_empleado']}) - Rol: {profesor['rol']} - Pass: {password_default}")
 
             conn.commit()
 
-            # Asociar alumno con sus grupos (tabla alumnos_grupos)
-            if alumno['grupos']:
-                for nombre_grupo in alumno['grupos']:
+            # Asociar profesor con sus grupos (actualizar profesor_id en tabla grupos)
+            if profesor['grupos']:
+                for nombre_grupo in profesor['grupos']:
                     if nombre_grupo in grupo_ids_map:
                         grupo_id = grupo_ids_map[nombre_grupo]
 
-                        # Verificar si ya existe la relación
+                        # Asignar profesor al grupo
                         cursor.execute("""
-                            SELECT id FROM alumnos_grupos
-                            WHERE alumno_id = %s AND grupo_id = %s
-                        """, (alumno_id, grupo_id))
-
-                        if not cursor.fetchone():
-                            # Insertar relación alumno-grupo
-                            cursor.execute("""
-                                INSERT INTO alumnos_grupos (alumno_id, grupo_id, team_id)
-                                VALUES (%s, %s, %s)
-                            """, (alumno_id, grupo_id, 1))  # team_id default = 1
-                            stats['grupos_asociados'] += 1
+                            UPDATE grupos
+                            SET profesor_id = %s
+                            WHERE id = %s
+                        """, (profesor_id, grupo_id))
+                        stats['grupos_asignados'] += 1
 
                 conn.commit()
 
         except mysql.connector.Error as e:
             stats['errores'] += 1
-            print(f"  ✗ Error con {alumno['numero_cuenta']}: {e}")
+            print(f"  ✗ Error con {profesor['numero_empleado']}: {e}")
             conn.rollback()
 
     cursor.close()
@@ -231,11 +236,10 @@ def cargar_alumnos_db(conn, alumnos: List[Dict]) -> Dict:
 
 
 def listar_archivos_csv():
-    """Lista todos los archivos CSV disponibles en el directorio actual"""
-    csv_files = list(Path.cwd().glob("*.csv"))
-    # Excluir archivos de ejemplo de profesores
-    csv_files = [f for f in csv_files if not f.name.startswith('ejemplo_profesores')]
-    return sorted(csv_files)
+    """Lista todos los archivos CSV disponibles para profesores"""
+    csv_files = list(Path.cwd().glob("*profesor*.csv"))
+    csv_files.extend(Path.cwd().glob("ejemplo_profesores.csv"))
+    return sorted(set(csv_files))
 
 
 def seleccionar_csv():
@@ -243,10 +247,11 @@ def seleccionar_csv():
     csv_files = listar_archivos_csv()
 
     if not csv_files:
-        print("\n[!] No se encontraron archivos CSV en el directorio actual")
-        print("    Crea un archivo <nombre>.csv con el formato:")
-        print("    numero_cuenta,nombre,nombref2,email,grupos")
+        print("\n[!] No se encontraron archivos CSV de profesores")
+        print("    Crea un archivo 'profesores.csv' o 'ejemplo_profesores.csv' con el formato:")
+        print("    numero_empleado,nombre,nombref2,email,especialidad,rol,grupos")
         print("    Ejemplo grupos: 'Grupo1|Grupo2' (múltiples grupos separados por |)")
+        print("    Ejemplo rol: 'profesor' o 'admin'")
         return None
 
     print("\n" + "="*60)
@@ -275,7 +280,7 @@ def seleccionar_csv():
 def main():
     """Función principal"""
     print("="*60)
-    print("CARGA DE ALUMNOS DESDE CSV")
+    print("CARGA DE PROFESORES DESDE CSV")
     print("Sistema de Calificación Automática")
     print("="*60)
 
@@ -290,24 +295,26 @@ def main():
 
         # Leer CSV
         print("\n[+] Leyendo archivo CSV...")
-        alumnos = leer_csv_alumnos(csv_path)
-        print(f"[+] Se encontraron {len(alumnos)} alumnos en el CSV")
+        profesores = leer_csv_profesores(csv_path)
+        print(f"[+] Se encontraron {len(profesores)} profesores en el CSV")
 
-        if not alumnos:
-            print("[!] No hay alumnos para procesar")
+        if not profesores:
+            print("[!] No hay profesores para procesar")
             return 1
 
         # Mostrar vista previa
-        print("\n📋 Vista previa de los primeros 3 alumnos:")
-        for i, alumno in enumerate(alumnos[:3], 1):
-            print(f"\n  {i}. {alumno['nombre']}")
-            print(f"     Cuenta: {alumno['numero_cuenta']}")
-            print(f"     Formato oficial: {alumno['nombref2']}")
-            print(f"     Email: {alumno['email'] or 'N/A'}")
-            print(f"     Grupos: {', '.join(alumno['grupos']) if alumno['grupos'] else 'Sin grupos'}")
+        print("\n📋 Vista previa de los primeros 3 profesores:")
+        for i, profesor in enumerate(profesores[:3], 1):
+            print(f"\n  {i}. {profesor['nombre']}")
+            print(f"     Empleado: {profesor['numero_empleado']}")
+            print(f"     Formato oficial: {profesor['nombref2']}")
+            print(f"     Email: {profesor['email'] or 'N/A'}")
+            print(f"     Especialidad: {profesor['especialidad'] or 'N/A'}")
+            print(f"     Rol: {profesor['rol'].upper()}")
+            print(f"     Grupos: {', '.join(profesor['grupos']) if profesor['grupos'] else 'Sin grupos asignados'}")
 
-        if len(alumnos) > 3:
-            print(f"\n  ... y {len(alumnos) - 3} alumnos más")
+        if len(profesores) > 3:
+            print(f"\n  ... y {len(profesores) - 3} profesores más")
 
         # Confirmar antes de continuar
         confirmar = input("\n¿Continuar con la carga a la base de datos? (s/n): ").strip().lower()
@@ -320,16 +327,16 @@ def main():
         config = cargar_credenciales()
         conn = conectar_db(config)
 
-        # Cargar alumnos
-        stats = cargar_alumnos_db(conn, alumnos)
+        # Cargar profesores
+        stats = cargar_profesores_db(conn, profesores)
 
         # Mostrar resumen
         print("\n" + "="*60)
         print("RESUMEN DE LA CARGA")
         print("="*60)
-        print(f"Alumnos insertados: {stats['insertados']}")
-        print(f"Alumnos actualizados: {stats['actualizados']}")
-        print(f"Asociaciones alumno-grupo creadas: {stats['grupos_asociados']}")
+        print(f"Profesores insertados: {stats['insertados']}")
+        print(f"Profesores actualizados: {stats['actualizados']}")
+        print(f"Grupos asignados: {stats['grupos_asignados']}")
         print(f"Errores: {stats['errores']}")
         print(f"Total procesados: {stats['insertados'] + stats['actualizados']}")
         print("="*60)
