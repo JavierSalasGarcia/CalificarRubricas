@@ -1,0 +1,31 @@
+RÚBRICA DE EVALUACIÓN
+Tarea: Conectarse a una Raspberry Pi desde cualquier lugar
+
+CRITERIOS DE EVALUACIÓN (Total: 10 puntos)
+
+1. Configuración correcta del servidor SSH (3 puntos)
+   - Instalación y habilitación del servicio SSH
+   - Configuración de seguridad básica (cambio de puerto, autenticación)
+   - Pruebas de conexión local exitosas
+
+2. Documentación clara del procedimiento (3 puntos)
+   - Explicación paso a paso del proceso
+   - Comandos utilizados correctamente documentados
+   - Redacción clara y estructura lógica
+
+3. Implementación de acceso remoto (2 puntos)
+   - Configuración de port forwarding o VPN
+   - Pruebas de conexión desde red externa
+   - Demostración funcional
+
+4. Evidencias y capturas de pantalla (2 puntos)
+   - Capturas claras y legibles
+   - Evidencia de todas las etapas del proceso
+   - Capturas de configuraciones relevantes
+
+CRITERIOS ADICIONALES:
+- Originalidad en la presentación
+- Solución de problemas encontrados
+- Consideraciones de seguridad implementadas
+
+NOTA: El trabajo debe ser individual y original. Se penalizará el plagio.

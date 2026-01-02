@@ -1,0 +1,22 @@
+{
+  "rubricas": {
+    "1. Conectarse a una Raspberry desde cualquier": {
+      "archivo": "rubricas/raspberry_conexion.txt",
+      "puntos_maximos": 10.0,
+      "criterios": [
+        {"nombre": "Configuración correcta", "puntos": 3.0},
+        {"nombre": "Documentación clara", "puntos": 3.0},
+        {"nombre": "Pruebas realizadas", "puntos": 2.0},
+        {"nombre": "Capturas de pantalla", "puntos": 2.0}
+      ]
+    },
+    "2. Ejemplo de otra tarea": {
+      "archivo": "rubricas/otra_tarea.txt",
+      "puntos_maximos": 10.0,
+      "criterios": [
+        {"nombre": "Criterio 1", "puntos": 5.0},
+        {"nombre": "Criterio 2", "puntos": 5.0}
+      ]
+    }
+  }
+}
